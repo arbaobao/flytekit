@@ -44,7 +44,7 @@ from flytekit.models.core import errors as _error_models
 from flytekit.models.core import execution as _execution_models
 from flytekit.models.core import identifier as _identifier
 from flytekit.tools.fast_registration import download_distribution as _download_distribution
-from flytekit.tools.module_loader import load_object_from_module
+from flytekit.tools.module_loader import load_object_from_module, add_sys_path
 
 
 def get_version_message():
@@ -376,6 +376,7 @@ def _execute_task(
         dynamic_addl_distro,
         dynamic_dest_dir,
     ) as ctx:
+        add_sys_path(".")
         resolver_obj = load_object_from_module(resolver)
         # Use the resolver to load the actual task object
         _task_def = resolver_obj.load_task(loader_args=resolver_args)
