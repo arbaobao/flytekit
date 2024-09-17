@@ -4,6 +4,7 @@ import typing
 from flyteidl.core import tasks_pb2
 from flyteidl.core import workflow_pb2 as _core_workflow
 
+from flytekit.core.pod_template import PodTemplate
 from flytekit.models import common as _common
 from flytekit.models import interface as _interface
 from flytekit.models import types as type_models
@@ -603,10 +604,12 @@ class TaskNodeOverrides(_common.FlyteIdlEntity):
         resources: typing.Optional[Resources],
         extended_resources: typing.Optional[tasks_pb2.ExtendedResources],
         container_image: typing.Optional[str] = None,
+        pod_template: typing.Optional[PodTemplate] = None,
     ):
         self._resources = resources
         self._extended_resources = extended_resources
         self._container_image = container_image
+        self._pod_template = pod_template
 
     @property
     def resources(self) -> Resources:
@@ -620,11 +623,16 @@ class TaskNodeOverrides(_common.FlyteIdlEntity):
     def container_image(self) -> typing.Optional[str]:
         return self._container_image
 
+    @property
+    def pod_template(self) -> typing.Optional[PodTemplate]:
+        return self._pod_template
+
     def to_flyte_idl(self):
         return _core_workflow.TaskNodeOverrides(
             resources=self.resources.to_flyte_idl() if self.resources is not None else None,
             extended_resources=self.extended_resources,
             container_image=self.container_image,
+            pod_template=self.pod_template
         )
 
     @classmethod
@@ -632,9 +640,10 @@ class TaskNodeOverrides(_common.FlyteIdlEntity):
         resources = Resources.from_flyte_idl(pb2_object.resources)
         extended_resources = pb2_object.extended_resources if pb2_object.HasField("extended_resources") else None
         container_image = pb2_object.container_image if len(pb2_object.container_image) > 0 else None
+        pod_template = pb2_object.pod_template if len(pb2_object.pod_template) > 0 else None
         if bool(resources.requests) or bool(resources.limits):
-            return cls(resources=resources, extended_resources=extended_resources, container_image=container_image)
-        return cls(resources=None, extended_resources=extended_resources, container_image=container_image)
+            return cls(resources=resources, extended_resources=extended_resources, container_image=container_image, pod_template=pod_template)
+        return cls(resources=None, extended_resources=extended_resources, container_image=container_image, pod_template=pod_template)
 
 
 class TaskNode(_common.FlyteIdlEntity):

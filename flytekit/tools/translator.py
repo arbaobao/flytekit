@@ -508,6 +508,7 @@ def get_serializable_node(
                     resources=entity._resources,
                     extended_resources=entity._extended_resources,
                     container_image=entity._container_image,
+                    pod_template=entity._pod_template,
                 ),
             ),
         )
@@ -589,6 +590,7 @@ def get_serializable_node(
                     resources=entity._resources,
                     extended_resources=entity._extended_resources,
                     container_image=entity._container_image,
+                    pod_template=entity._pod_template,
                 ),
             ),
         )
@@ -658,6 +660,7 @@ def get_serializable_array_node_map_task(
             resources=node._resources,
             extended_resources=node._extended_resources,
             container_image=node._container_image,
+            pod_template=node._pod_template,
         ),
     )
     node = workflow_model.Node(
