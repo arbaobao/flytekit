@@ -805,7 +805,6 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
         # Save all the things necessary to create an WorkflowTemplate, except for the missing project and domain
         self._nodes = all_nodes
         self._output_bindings = bindings
-
         if not output_names:
             return None
         if len(output_names) == 1:

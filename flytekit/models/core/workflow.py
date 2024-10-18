@@ -624,7 +624,7 @@ class TaskNodeOverrides(_common.FlyteIdlEntity):
         return self._container_image
 
     @property
-    def pod_template(self) -> typing.Optional[PodTemplate]:
+    def pod_template(self) -> PodTemplate:
         return self._pod_template
 
     def to_flyte_idl(self):
@@ -632,7 +632,7 @@ class TaskNodeOverrides(_common.FlyteIdlEntity):
             resources=self.resources.to_flyte_idl() if self.resources is not None else None,
             extended_resources=self.extended_resources,
             container_image=self.container_image,
-            pod_template=self.pod_template
+            pod_template=self.pod_template.to_flyte_idl() if self.pod_template is not None else None,
         )
 
     @classmethod
@@ -640,7 +640,7 @@ class TaskNodeOverrides(_common.FlyteIdlEntity):
         resources = Resources.from_flyte_idl(pb2_object.resources)
         extended_resources = pb2_object.extended_resources if pb2_object.HasField("extended_resources") else None
         container_image = pb2_object.container_image if len(pb2_object.container_image) > 0 else None
-        pod_template = pb2_object.pod_template if len(pb2_object.pod_template) > 0 else None
+        pod_template = pb2_object.pod_template if pb2_object.HasField("pod_template") else None
         if bool(resources.requests) or bool(resources.limits):
             return cls(resources=resources, extended_resources=extended_resources, container_image=container_image, pod_template=pod_template)
         return cls(resources=None, extended_resources=extended_resources, container_image=container_image, pod_template=pod_template)

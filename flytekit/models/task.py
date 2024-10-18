@@ -110,6 +110,56 @@ class Resources(_common.FlyteIdlEntity):
             limits=[Resources.ResourceEntry.from_flyte_idl(l) for l in pb2_object.limits],
         )
 
+class PodTemplate(_common.FlyteIdlEntity):
+    def __init__(
+        self,
+        primary_container_name: typing.Optional[str] = None,
+        labels: typing.Optional[typing.Dict[str, str]] = None,
+        annotations: typing.Optional[typing.Dict[str, str]] = None,
+        pod_spec: typing.Dict[str, typing.Any] = None,
+    ):
+        """
+        This defines a kubernetes pod target.  It will build the pod target during task execution
+        """
+        self._primary_container_name = primary_container_name
+        self._labels = labels
+        self._annotations = annotations
+        self._pod_spec = pod_spec
+
+    @property
+    def primary_container_name(self) -> typing.Optional[str]:
+        return self._primary_container_name
+
+    @property
+    def labels(self) -> typing.Dict[str, str]:
+        return self._labels
+
+    @property
+    def annotations(self) -> typing.Optional[typing.Dict[str, str]]:
+        return self._annotations
+
+    @property
+    def pod_spec(self) -> typing.Dict[str, typing.Any]:
+        return self._pod_spec
+
+    def to_flyte_idl(self) -> _core_task.PodTemplate:
+        return _core_task.PodTemplate(
+            primary_container_name=self._primary_container_name,
+            labels={k: v for k, v in self.labels.items()} if self.labels is not None else None,
+            annotations={k: v for k, v in self.annotations.items()} if self.annotations is not None else None,
+            pod_spec=_json_format.Parse(_json.dumps(self.pod_spec), _struct.Struct()) if self.pod_spec else None,
+        )
+
+    @classmethod
+    def from_flyte_idl(cls, pb2_object: _core_task.PodTemplate):
+        return cls(
+            primary_container_name=pb2_object.primary_container_name,
+            labels={k: v for k, v in pb2_object.labels.items()} if pb2_object.labels is not None else None,
+            annotations={k: v for k, v in pb2_object.annotations.items()} if pb2_object.annotations is not None else None,
+            pod_spec=_json_format.MessageToDict(pb2_object.pod_spec) if pb2_object.HasField("pod_spec") else None,
+
+        )
+
 
 class RuntimeMetadata(_common.FlyteIdlEntity):
     class RuntimeType(object):

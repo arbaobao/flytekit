@@ -2,6 +2,7 @@ import asyncio
 import contextlib
 import datetime
 import inspect
+import logging
 import os
 import pathlib
 import signal
@@ -84,7 +85,6 @@ def _dispatch_execute(
             c: OR if an unhandled exception is retrieved - record it as an errors.pb
     """
     output_file_dict = {}
-
     task_def = None
     try:
         try:
