@@ -14,6 +14,7 @@ from flytekit.loggers import logger
 from flytekit.models import literals as _literal_models
 from flytekit.models.core import workflow as _workflow_model
 from flytekit.models.task import Resources as _resources_model
+from flytekit.models.task import PodTemplate as _pod_template_model
 
 
 def assert_not_promise(v: Any, location: str):
@@ -68,7 +69,7 @@ class Node(object):
         self._resources: typing.Optional[_resources_model] = None
         self._extended_resources: typing.Optional[tasks_pb2.ExtendedResources] = None
         self._container_image: typing.Optional[str] = None
-        self._pod_template: typing.Optional[tasks_pb2.PodTemplate] = None
+        self._pod_template: typing.Optional[_pod_template_model] = None
 
     def runs_before(self, other: Node):
         """
@@ -226,13 +227,13 @@ class Node(object):
 
         if pod_template is not None:
             assert_not_promise(pod_template, "PodTemplate")
-
             self._pod_template = convert_podtemplate_to_model(PodTemplate(
                                                         primary_container_name=pod_template.primary_container_name,
                                                         annotations=pod_template.annotations,
                                                         labels=pod_template.labels,
                                                         pod_spec=pod_template.pod_spec)
             )
+            print(self._pod_template)
         return self
 
 

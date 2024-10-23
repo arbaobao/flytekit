@@ -42,7 +42,7 @@ from flytekit.models import types as _type_models
 from flytekit.models import types as type_models
 from flytekit.models.core import workflow as _workflow_model
 from flytekit.models.literals import Primitive
-from flytekit.models.task import Resources
+from flytekit.models.task import Resources, PodTemplate
 from flytekit.models.types import SimpleType
 
 
@@ -517,6 +517,7 @@ class Promise(object):
         cache: Optional[bool] = None,
         cache_version: Optional[str] = None,
         cache_serialize: Optional[bool] = None,
+        pod_template: Optional[PodTemplate] = None,
         *args,
         **kwargs,
     ):
@@ -537,6 +538,7 @@ class Promise(object):
                 cache=cache,
                 cache_version=cache_version,
                 cache_serialize=cache_serialize,
+                pod_template=pod_template,
                 *args,
                 **kwargs,
             )

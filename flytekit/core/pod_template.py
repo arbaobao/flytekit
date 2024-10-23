@@ -32,7 +32,5 @@ class PodTemplate(object):
 def convert_podtemplate_to_model(
     pod_template: Optional[PodTemplate] = None,
 ) -> task_models.PodTemplate:
-    from kubernetes.client import ApiClient, V1PodSpec
-    print(pod_template.pod_spec)
-    print(ApiClient().sanitize_for_serialization(cast(PodTemplate, pod_template).pod_spec))
+    from kubernetes.client import ApiClient
     return task_models.PodTemplate(primary_container_name=pod_template.primary_container_name, labels=pod_template.labels, annotations=pod_template.annotations, pod_spec=ApiClient().sanitize_for_serialization(cast(PodTemplate, pod_template).pod_spec))
