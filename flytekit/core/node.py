@@ -233,7 +233,6 @@ class Node(object):
                                                         labels=pod_template.labels,
                                                         pod_spec=pod_template.pod_spec)
             )
-            print(self._pod_template)
         return self
 
 
