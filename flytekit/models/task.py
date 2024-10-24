@@ -110,6 +110,7 @@ class Resources(_common.FlyteIdlEntity):
             limits=[Resources.ResourceEntry.from_flyte_idl(l) for l in pb2_object.limits],
         )
 
+
 class PodTemplate(_common.FlyteIdlEntity):
     def __init__(
         self,
@@ -155,9 +156,10 @@ class PodTemplate(_common.FlyteIdlEntity):
         return cls(
             primary_container_name=pb2_object.primary_container_name,
             labels={k: v for k, v in pb2_object.labels.items()} if pb2_object.labels is not None else None,
-            annotations={k: v for k, v in pb2_object.annotations.items()} if pb2_object.annotations is not None else None,
+            annotations={k: v for k, v in pb2_object.annotations.items()}
+            if pb2_object.annotations is not None
+            else None,
             pod_spec=_json_format.MessageToDict(pb2_object.pod_spec) if pb2_object.HasField("pod_spec") else None,
-
         )
 
 

@@ -42,7 +42,7 @@ from flytekit.models import types as _type_models
 from flytekit.models import types as type_models
 from flytekit.models.core import workflow as _workflow_model
 from flytekit.models.literals import Primitive
-from flytekit.models.task import Resources, PodTemplate
+from flytekit.models.task import PodTemplate, Resources
 from flytekit.models.types import SimpleType
 
 
