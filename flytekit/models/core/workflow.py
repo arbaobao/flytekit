@@ -12,7 +12,7 @@ from flytekit.models.core import condition as _condition
 from flytekit.models.core import identifier as _identifier
 from flytekit.models.literals import Binding as _Binding
 from flytekit.models.literals import RetryStrategy as _RetryStrategy
-from flytekit.models.task import Resources, PodTemplate
+from flytekit.models.task import PodTemplate, Resources
 
 
 class IfBlock(_common.FlyteIdlEntity):
