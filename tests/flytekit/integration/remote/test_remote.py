@@ -9,13 +9,14 @@ import subprocess
 import tempfile
 import time
 import typing
-
+import re
 import joblib
 from urllib.parse import urlparse
 import uuid
 import pytest
+from mock import mock, patch
 
-from flytekit import LaunchPlan, kwtypes
+from flytekit import LaunchPlan, kwtypes, WorkflowExecutionPhase
 from flytekit.configuration import Config, ImageConfig, SerializationSettings
 from flytekit.core.launch_plan import reference_launch_plan
 from flytekit.core.task import reference_task
@@ -23,7 +24,10 @@ from flytekit.core.workflow import reference_workflow
 from flytekit.exceptions.user import FlyteAssertion, FlyteEntityNotExistException
 from flytekit.extras.sqlite3.task import SQLite3Config, SQLite3Task
 from flytekit.remote.remote import FlyteRemote
+from flyteidl.service import dataproxy_pb2 as _data_proxy_pb2
 from flytekit.types.schema import FlyteSchema
+from flytekit.clients.friendly import SynchronousFlyteClient as _SynchronousFlyteClient
+from flytekit.configuration import PlatformConfig
 
 MODULE_PATH = pathlib.Path(__file__).parent / "workflows/basic"
 CONFIG = os.environ.get("FLYTECTL_CONFIG", str(pathlib.Path.home() / ".flyte" / "config-sandbox.yaml"))
@@ -32,6 +36,7 @@ IMAGE = os.environ.get("FLYTEKIT_IMAGE", "localhost:30000/flytekit:dev")
 PROJECT = "flytesnacks"
 DOMAIN = "development"
 VERSION = f"v{os.getpid()}"
+DEST_DIR = "/tmp"
 
 
 @pytest.fixture(scope="session")
@@ -57,7 +62,8 @@ def register():
     assert out.returncode == 0
 
 
-def run(file_name, wf_name, *args):
+def run(file_name, wf_name, *args) -> str:
+    # Copy the environment and set the environment variable
     out = subprocess.run(
         [
             "pyflyte",
@@ -66,6 +72,8 @@ def run(file_name, wf_name, *args):
             CONFIG,
             "run",
             "--remote",
+            "--destination-dir",
+            DEST_DIR,
             "--image",
             IMAGE,
             "--project",
@@ -75,9 +83,20 @@ def run(file_name, wf_name, *args):
             MODULE_PATH / file_name,
             wf_name,
             *args,
-        ]
+        ],
+        capture_output=True,  # Capture the output streams
+        text=True,  # Return outputs as strings (not bytes)
     )
-    assert out.returncode == 0
+    assert out.returncode == 0, (f"Command failed with return code {out.returncode}.\n"
+                                 f"Standard Output: {out.stdout}\n"
+                                 f"Standard Error: {out.stderr}\n")
+
+    match = re.search(r'executions/([a-zA-Z0-9]+)', out.stdout)
+    if match:
+        execution_id = match.group(1)
+        return execution_id
+
+    return "Unknown"
 
 
 def test_remote_run():
@@ -86,7 +105,28 @@ def test_remote_run():
 
     # run twice to make sure it will register a new version of the workflow.
     run("default_lp.py", "my_wf")
-    run("default_lp.py", "my_wf")
+
+
+def test_generic_idl_flytetypes():
+    os.environ["FLYTE_USE_OLD_DC_FORMAT"] = "true"
+    # default inputs for flyte types in dataclass
+    execution_id = run("generic_idl_flytetypes.py", "wf")
+    remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
+    execution = remote.fetch_execution(name=execution_id)
+    execution = remote.wait(execution=execution, timeout=datetime.timedelta(minutes=5))
+    print("Execution Error:", execution.error)
+    assert execution.closure.phase == WorkflowExecutionPhase.SUCCEEDED, f"Execution failed with phase: {execution.closure.phase}"
+    os.environ["FLYTE_USE_OLD_DC_FORMAT"] = "false"
+
+
+def test_msgpack_idl_flytetypes():
+    # default inputs for flyte types in dataclass
+    execution_id = run("msgpack_idl_flytetypes.py", "wf")
+    remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
+    execution = remote.fetch_execution(name=execution_id)
+    execution = remote.wait(execution=execution, timeout=datetime.timedelta(minutes=5))
+    print("Execution Error:", execution.error)
+    assert execution.closure.phase == WorkflowExecutionPhase.SUCCEEDED, f"Execution failed with phase: {execution.closure.phase}"
 
 
 def test_fetch_execute_launch_plan(register):
@@ -94,6 +134,28 @@ def test_fetch_execute_launch_plan(register):
     flyte_launch_plan = remote.fetch_launch_plan(name="basic.hello_world.my_wf", version=VERSION)
     execution = remote.execute(flyte_launch_plan, inputs={}, wait=True)
     assert execution.outputs["o0"] == "hello world"
+
+
+def test_get_download_artifact_signed_url(register):
+    remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
+    flyte_launch_plan = remote.fetch_launch_plan(name="basic.basic_workflow.my_wf", version=VERSION)
+    execution = remote.execute(flyte_launch_plan, inputs={"a": 10, "b": "foobar"}, wait=True)
+    project, domain, name = execution.id.project, execution.id.domain, execution.id.name
+
+    # Fetch the download deck signed URL for the execution
+    client = _SynchronousFlyteClient(PlatformConfig.for_endpoint("localhost:30080", True))
+    download_link_response = client.get_download_artifact_signed_url(
+        node_id="n0",  # Assuming node_id is "n0"
+        project=project,
+        domain=domain,
+        name=name,
+        artifact_type=_data_proxy_pb2.ARTIFACT_TYPE_DECK,
+    )
+
+    # Check if the signed URL is valid and starts with the expected prefix
+    signed_url = download_link_response.signed_url[0]
+    assert signed_url.startswith(
+        f"http://localhost:30002/my-s3-bucket/metadata/propeller/{project}-{domain}-{name}/n0/data/0/deck.html")
 
 
 def test_fetch_execute_launch_plan_with_args(register):
@@ -134,7 +196,7 @@ def test_monitor_workflow_execution(register):
             break
 
         with pytest.raises(
-            FlyteAssertion, match="Please wait until the execution has completed before requesting the outputs.",
+                FlyteAssertion, match="Please wait until the execution has completed before requesting the outputs.",
         ):
             execution.outputs
 
@@ -384,7 +446,8 @@ def test_execute_with_default_launch_plan(register):
     from workflows.basic.subworkflows import parent_wf
 
     remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
-    execution = remote.execute(parent_wf, inputs={"a": 101}, version=VERSION, wait=True, image_config=ImageConfig.auto(img_name=IMAGE))
+    execution = remote.execute(parent_wf, inputs={"a": 101}, version=VERSION, wait=True,
+                               image_config=ImageConfig.auto(img_name=IMAGE))
     # check node execution inputs and outputs
     assert execution.node_executions["n0"].inputs == {"a": 101}
     assert execution.node_executions["n0"].outputs == {"t1_int_output": 103, "c": "world"}
@@ -498,6 +561,7 @@ def test_execute_workflow_with_maptask(register):
     )
     assert execution.outputs["o0"] == [4, 5, 6]
 
+
 @pytest.mark.lftransfers
 class TestLargeFileTransfers:
     """A class to capture tests and helper functions for large file transfers."""
@@ -536,7 +600,7 @@ class TestLargeFileTransfers:
         """An ephemeral minio S3 path which is wiped upon the context manager's exit"""
         # Generate a random path in our Minio s3 bucket, under <BUCKET>/PROJECT/DOMAIN/<UUID>
         buckets = s3_client.list_buckets()["Buckets"]
-        assert len(buckets) == 1 # We expect just the default sandbox bucket
+        assert len(buckets) == 1  # We expect just the default sandbox bucket
         bucket = buckets[0]["Name"]
         root = str(uuid.uuid4())
         key = f"{PROJECT}/{DOMAIN}/{root}/"
@@ -546,7 +610,6 @@ class TestLargeFileTransfers:
         if "Contents" in response:
             for obj in response["Contents"]:
                 TestLargeFileTransfers._delete_s3_file(s3_client, bucket, obj["Key"])
-
 
     @staticmethod
     @pytest.mark.parametrize("gigabytes", [2, 3])
@@ -588,6 +651,124 @@ class TestLargeFileTransfers:
             assert s3_md5_bytes == md5_bytes
 
 
+def test_workflow_remote_func():
+    """Test the logic of the remote execution of workflows and tasks."""
+    from workflows.basic.child_workflow import parent_wf, double
+
+    remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN, interactive_mode_enabled=True)
+
+    out0 = remote.execute(
+        double,
+        inputs={"a": 3},
+        wait=True,
+        version=VERSION,
+        image_config=ImageConfig.from_images(IMAGE),
+    )
+    out1 = remote.execute(
+        parent_wf,
+        inputs={"a": 3},
+        wait=True,
+        version=VERSION + "-1",
+        image_config=ImageConfig.from_images(IMAGE),
+    )
+    out2 = remote.execute(
+        parent_wf,
+        inputs={"a": 2},
+        wait=True,
+        version=VERSION + "-2",
+        image_config=ImageConfig.from_images(IMAGE),
+    )
+
+    assert out0.outputs["o0"] == 6
+    assert out1.outputs["o0"] == 18
+    assert out2.outputs["o0"] == 12
+
+
+def test_execute_task_remote_func_list_of_floats():
+    """Test remote execution of a @task-decorated python function with a list of floats."""
+    from workflows.basic.list_float_wf import concat_list
+
+    remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN, interactive_mode_enabled=True)
+
+    xs: typing.List[float] = [0.1, 0.2, 0.3, 0.4, -99999.7]
+    out = remote.execute(
+        concat_list,
+        inputs={"xs": xs},
+        wait=True,
+        version=VERSION,
+        image_config=ImageConfig.from_images(IMAGE),
+    )
+    assert out.outputs["o0"] == "[0.1, 0.2, 0.3, 0.4, -99999.7]"
+
+
+def test_execute_task_remote_func_convert_dict():
+    """Test remote execution of a @task-decorated python function with a dict of strings."""
+    from workflows.basic.dict_str_wf import convert_to_string
+
+    remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN, interactive_mode_enabled=True)
+
+    d: typing.Dict[str, str] = {"key1": "value1", "key2": "value2"}
+    out = remote.execute(
+        convert_to_string,
+        inputs={"d": d},
+        wait=True,
+        version=VERSION,
+        image_config=ImageConfig.from_images(IMAGE),
+    )
+    assert json.loads(out.outputs["o0"]) == {"key1": "value1", "key2": "value2"}
+
+
+def test_execute_python_workflow_remote_func_dict_of_string_to_string():
+    """Test remote execution of a @workflow-decorated python function with a dict of strings."""
+    from workflows.basic.dict_str_wf import my_wf
+
+    remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN, interactive_mode_enabled=True)
+
+    d: typing.Dict[str, str] = {"k1": "v1", "k2": "v2"}
+    out = remote.execute(
+        my_wf,
+        inputs={"d": d},
+        wait=True,
+        version=VERSION + "dict_str_wf",
+        image_config=ImageConfig.from_images(IMAGE),
+    )
+    assert json.loads(out.outputs["o0"]) == {"k1": "v1", "k2": "v2"}
+
+
+def test_execute_python_workflow_remote_func_list_of_floats():
+    """Test remote execution of a @workflow-decorated python function with a list of floats."""
+    """Test execution of a @workflow-decorated python function."""
+    from workflows.basic.list_float_wf import my_wf
+
+    remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN, interactive_mode_enabled=True)
+
+    xs: typing.List[float] = [42.24, 999.1, 0.0001]
+    out = remote.execute(
+        my_wf,
+        inputs={"xs": xs},
+        wait=True,
+        version=VERSION + "list_float_wf",
+        image_config=ImageConfig.from_images(IMAGE),
+    )
+    assert out.outputs["o0"] == "[42.24, 999.1, 0.0001]"
+
+
+def test_execute_workflow_remote_fn_with_maptask():
+    """Test remote execution of a @workflow-decorated python function with a map task."""
+    from workflows.basic.array_map import workflow_with_maptask
+
+    remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN, interactive_mode_enabled=True)
+
+    d: typing.List[int] = [1, 2, 3]
+    out = remote.execute(
+        workflow_with_maptask,
+        inputs={"data": d, "y": 3},
+        wait=True,
+        version=VERSION,
+        image_config=ImageConfig.from_images(IMAGE),
+    )
+    assert out.outputs["o0"] == [4, 5, 6]
+
 def test_register_wf_fast(register):
     from workflows.basic.subworkflows import parent_wf
 
@@ -608,3 +789,13 @@ def test_register_wf_fast(register):
     subworkflow_node_executions = execution.node_executions["n1"].subworkflow_node_executions
     subworkflow_node_executions["n1-0-n0"].inputs == {"a": 103}
     subworkflow_node_executions["n1-0-n1"].outputs == {"t1_int_output": 107, "c": "world"}
+
+
+def test_fetch_active_launchplan_not_found(register):
+    remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
+    assert remote.fetch_active_launchplan(name="basic.list_float_wf.fake_wf") is None
+
+def test_get_control_plane_version():
+    client = _SynchronousFlyteClient(PlatformConfig.for_endpoint("localhost:30080", True))
+    version = client.get_control_plane_version()
+    assert version == "unknown" or version.startswith("v")

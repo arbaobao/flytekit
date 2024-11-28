@@ -7,7 +7,7 @@ import pytest
 from flytekit.core import context_manager
 from flytekit.core.context_manager import ExecutionState
 from flytekit.image_spec import ImageSpec
-from flytekit.image_spec.image_spec import _F_IMG_ID, ImageBuildEngine, FLYTE_FORCE_PUSH_IMAGE_SPEC
+from flytekit.image_spec.image_spec import _F_IMG_ID, ImageBuildEngine
 from flytekit.core.python_auto_container import update_image_spec_copy_handling
 from flytekit.configuration import SerializationSettings, FastSerializationSettings, ImageConfig
 from flytekit.constants import CopyFileDetection
@@ -24,7 +24,7 @@ def test_image_spec(mock_image_spec_builder, monkeypatch):
         builder="dummy",
         packages=["pandas"],
         apt_packages=["git"],
-        python_version="3.8",
+        python_version="3.9",
         registry="localhost:30001",
         base_image=base_image,
         cuda="11.2.2",
@@ -32,15 +32,17 @@ def test_image_spec(mock_image_spec_builder, monkeypatch):
         requirements=REQUIREMENT_FILE,
         registry_config=REGISTRY_CONFIG_FILE,
         entrypoint=["/bin/bash"],
+        copy=["/src/file1.txt"]
     )
     assert image_spec._is_force_push is False
 
     image_spec = image_spec.with_commands("echo hello")
     image_spec = image_spec.with_packages("numpy")
     image_spec = image_spec.with_apt_packages("wget")
+    image_spec = image_spec.with_copy(["/src", "/src/file2.txt"])
     image_spec = image_spec.force_push()
 
-    assert image_spec.python_version == "3.8"
+    assert image_spec.python_version == "3.9"
     assert image_spec.base_image == base_image
     assert image_spec.packages == ["pandas", "numpy"]
     assert image_spec.apt_packages == ["git", "wget"]
@@ -58,8 +60,9 @@ def test_image_spec(mock_image_spec_builder, monkeypatch):
     assert image_spec.commands == ["echo hello"]
     assert image_spec._is_force_push is True
     assert image_spec.entrypoint == ["/bin/bash"]
+    assert image_spec.copy == ["/src/file1.txt", "/src", "/src/file2.txt"]
 
-    assert image_spec.image_name() == f"localhost:30001/flytekit:nDg0IzEKso7jtbBnpLWTnw"
+    assert image_spec.image_name() == f"localhost:30001/flytekit:AjLtng9gJfYzLnjbNy70gA"
     ctx = context_manager.FlyteContext.current_context()
     with context_manager.FlyteContextManager.with_context(
         ctx.with_execution_state(ctx.execution_state.with_params(mode=ExecutionState.Mode.TASK_EXECUTION))
@@ -111,7 +114,7 @@ def test_build_existing_image_with_force_push():
     image_spec = ImageSpec(name="hello", builder="test").force_push()
 
     builder = Mock()
-    builder.build_image.return_value = "new_image_name"
+    builder.build_image.return_value = "fqn.xyz/new_image_name:v-test"
     ImageBuildEngine.register("test", builder)
 
     ImageBuildEngine.build(image_spec)
@@ -215,3 +218,29 @@ def test_update_image_spec_copy_handling():
     update_image_spec_copy_handling(image_spec, ss)
     assert image_spec.source_copy_mode is None
     assert image_spec.source_root is None
+
+
+def test_registry_name():
+    invalid_registry_names = [
+        "invalid:port:50000",
+        "ghcr.io/flyteorg:latest",
+        "flyteorg:latest"
+    ]
+    for invalid_registry_name in invalid_registry_names:
+        with pytest.raises(ValueError, match="Invalid container registry name"):
+            ImageSpec(registry=invalid_registry_name)
+
+    valid_registry_names = [
+        "localhost:30000",
+        "localhost:30000/flyte",
+        "192.168.1.1:30000",
+        "192.168.1.1:30000/myimage",
+        "ghcr.io/flyteorg",
+        "my.registry.com/myimage",
+        "my.registry.com:5000/myimage",
+        "myregistry:5000/myimage",
+        "us-west1-docker.pkg.dev/example.com/my-project/my-repo"
+        "flyteorg",
+    ]
+    for valid_registry_name in valid_registry_names:
+        ImageSpec(registry=valid_registry_name)
