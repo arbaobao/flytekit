@@ -120,7 +120,7 @@ class PodTemplate(_common.FlyteIdlEntity):
         pod_spec: typing.Dict[str, typing.Any] = None,
     ):
         """
-        This defines a kubernetes pod target.  It will build the pod target during task execution
+        This defines a kubernetes pod template.  It will build the pod target during task execution
         """
         self._primary_container_name = primary_container_name
         self._labels = labels

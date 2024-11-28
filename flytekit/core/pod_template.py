@@ -1,11 +1,10 @@
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Dict, Optional, cast
+from typing import TYPE_CHECKING, Any, Dict, Optional, cast
+
+from kubernetes.client import ApiClient
 
 from flytekit.exceptions import user as _user_exceptions
 from flytekit.models import task as task_models
-
-if TYPE_CHECKING:
-    from kubernetes.client import V1PodSpec
 
 PRIMARY_CONTAINER_DEFAULT_NAME = "primary"
 
@@ -27,16 +26,28 @@ class PodTemplate(object):
         if not self.primary_container_name:
             raise _user_exceptions.FlyteValidationException("A primary container name cannot be undefined")
 
+    def _serialize_pod_spec(self) -> Dict[str, Any]:
+        if self.pod_spec is None:
+            return {}
+        from kubernetes.client import ApiClient, V1PodSpec
+        containers = cast(V1PodSpec, self.pod_spec).containers
 
-def convert_podtemplate_to_model(
-    pod_template: Optional[PodTemplate] = None,
-) -> task_models.PodTemplate:
-    from kubernetes.client import ApiClient
+        final_containers = []
+        for container in containers:
+            # In the case of the primary container, we overwrite specific container attributes
+            # with the values given to ContainerTask.
+            # The attributes include: image, command, args, resource, and env (env is unioned)
+            final_containers.append(container)
+        cast(V1PodSpec, self.pod_spec).containers = final_containers
+        return ApiClient().sanitize_for_serialization(self.pod_spec)
 
-    if pod_template is not None:
-        return task_models.PodTemplate(
-            primary_container_name=pod_template.primary_container_name,
-            labels=pod_template.labels,
-            annotations=pod_template.annotations,
-            pod_spec=ApiClient().sanitize_for_serialization(cast(PodTemplate, pod_template).pod_spec),
-        )
+def convert_pod_template_to_model(podtemplate: Optional[PodTemplate] = None) -> task_models.PodTemplate:
+    breakpoint()
+    if podtemplate is None:
+        return None
+    return task_models.PodTemplate(
+        primary_container_name=podtemplate.primary_container_name,
+        labels=podtemplate.labels,
+        annotations=podtemplate.annotations,
+        pod_spec=podtemplate.pod_spec,
+    )

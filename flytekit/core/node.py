@@ -6,7 +6,7 @@ from typing import Any, Dict, List, Optional, Union
 
 from flyteidl.core import tasks_pb2
 
-from flytekit.core.pod_template import PodTemplate, convert_podtemplate_to_model
+from flytekit.core.pod_template import PodTemplate
 from flytekit.core.resources import Resources, convert_resources_to_resource_model
 from flytekit.core.utils import _dnsify
 from flytekit.extras.accelerators import BaseAccelerator
@@ -227,14 +227,7 @@ class Node(object):
 
         if pod_template is not None:
             assert_not_promise(pod_template, "PodTemplate")
-            self._pod_template = convert_podtemplate_to_model(
-                PodTemplate(
-                    primary_container_name=pod_template.primary_container_name,
-                    annotations=pod_template.annotations,
-                    labels=pod_template.labels,
-                    pod_spec=pod_template.pod_spec,
-                )
-            )
+            self._pod_template = pod_template
         return self
 
 

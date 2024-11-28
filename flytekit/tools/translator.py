@@ -19,10 +19,12 @@ from flytekit.core.gate import Gate
 from flytekit.core.launch_plan import LaunchPlan, ReferenceLaunchPlan
 from flytekit.core.legacy_map_task import MapPythonTask
 from flytekit.core.node import Node
+from flytekit.core.pod_template import convert_pod_template_to_model
+from flytekit.core.promise import flyte_entity_call_handler
 from flytekit.core.python_auto_container import PythonAutoContainerTask
 from flytekit.core.reference_entity import ReferenceEntity, ReferenceSpec, ReferenceTemplate
 from flytekit.core.task import ReferenceTask
-from flytekit.core.utils import ClassDecorator, _dnsify
+from flytekit.core.utils import ClassDecorator, _dnsify, _serialize_pod_spec
 from flytekit.core.workflow import ReferenceWorkflow, WorkflowBase
 from flytekit.models import common as _common_models
 from flytekit.models import common as common_models
@@ -493,6 +495,9 @@ def get_serializable_node(
         #     node_model._output_aliases = entity._aliases
     elif isinstance(entity.flyte_entity, PythonTask):
         task_spec = get_serializable(entity_mapping, settings, entity.flyte_entity, options=options)
+        if entity._pod_template is not None:
+            entity._pod_template.pod_spec=_serialize_pod_spec(entity._pod_template, entity.flyte_entity.get_container(settings), settings)
+
         node_model = workflow_model.Node(
             id=_dnsify(entity.id),
             metadata=entity.metadata,
@@ -505,7 +510,7 @@ def get_serializable_node(
                     resources=entity._resources,
                     extended_resources=entity._extended_resources,
                     container_image=entity._container_image,
-                    pod_template=entity._pod_template,
+                    pod_template=convert_pod_template_to_model(entity._pod_template),
                 ),
             ),
         )
@@ -588,6 +593,7 @@ def get_serializable_node(
                     extended_resources=entity._extended_resources,
                     container_image=entity._container_image,
                     pod_template=entity._pod_template,
+                    # serial podtemplate
                 ),
             ),
         )

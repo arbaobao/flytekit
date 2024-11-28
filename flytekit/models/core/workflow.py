@@ -4,7 +4,7 @@ import typing
 from flyteidl.core import tasks_pb2
 from flyteidl.core import workflow_pb2 as _core_workflow
 
-from flytekit.core.pod_template import PodTemplate
+# from flytekit import PodTemplate
 from flytekit.models import common as _common
 from flytekit.models import interface as _interface
 from flytekit.models import types as type_models
@@ -12,7 +12,7 @@ from flytekit.models.core import condition as _condition
 from flytekit.models.core import identifier as _identifier
 from flytekit.models.literals import Binding as _Binding
 from flytekit.models.literals import RetryStrategy as _RetryStrategy
-from flytekit.models.task import Resources
+from flytekit.models.task import Resources, PodTemplate
 
 
 class IfBlock(_common.FlyteIdlEntity):
@@ -628,6 +628,7 @@ class TaskNodeOverrides(_common.FlyteIdlEntity):
         return self._pod_template
 
     def to_flyte_idl(self):
+        breakpoint()
         return _core_workflow.TaskNodeOverrides(
             resources=self.resources.to_flyte_idl() if self.resources is not None else None,
             extended_resources=self.extended_resources,
