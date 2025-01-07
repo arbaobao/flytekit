@@ -176,7 +176,7 @@ def _dispatch_execute(
         # Step2
         # Invoke task - dispatch_execute
         outputs = task_def.dispatch_execute(ctx, idl_input_literals)
-
+        print(outputs)
         # Step3a
         if isinstance(outputs, VoidPromise):
             logger.warning("Task produces no outputs")
