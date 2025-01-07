@@ -193,7 +193,7 @@ def _dispatch_execute(
             if offloading_enabled:
                 min_offloaded_size = int(os.environ.get("_F_L_MIN_SIZE_MB", "10")) * 1024 * 1024
                 max_offloaded_size = int(os.environ.get("_F_L_MAX_SIZE_MB", "1000")) * 1024 * 1024
-
+            print(outputs.literals)
             # Go over each output and create a separate offloaded in case its size is too large
             for k, v in outputs.literals.items():
                 literal_map_copy[k] = v
@@ -202,7 +202,7 @@ def _dispatch_execute(
                     continue
 
                 print("nelson:in")
-                print(outputs.literals)
+
                 lit = v.to_flyte_idl()
                 print("nelson:out")
                 if max_offloaded_size != -1 and lit.ByteSize() >= max_offloaded_size:
