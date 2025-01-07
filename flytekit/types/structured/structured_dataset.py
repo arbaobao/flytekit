@@ -980,7 +980,7 @@ class StructuredDatasetTransformerEngine(AsyncTypeTransformer[StructuredDataset]
                 return sd
             else:
                 return self.open_as(ctx, sd_literal, expected_python_type, metad)
-        print(lv.scalar)
+
         # Start handling for StructuredDataset scalars, first look at the columns
         incoming_columns = lv.scalar.structured_dataset.metadata.structured_dataset_type.columns
 
@@ -996,6 +996,7 @@ class StructuredDatasetTransformerEngine(AsyncTypeTransformer[StructuredDataset]
             final_dataset_columns = self._convert_ordered_dict_of_columns_to_list(column_dict)
 
         print("i am in")
+        print(lv.scalar)
         new_sdt = StructuredDatasetType(
             columns=final_dataset_columns,
             format=lv.scalar.structured_dataset.metadata.structured_dataset_type.format,
