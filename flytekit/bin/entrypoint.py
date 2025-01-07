@@ -176,7 +176,7 @@ def _dispatch_execute(
         # Step2
         # Invoke task - dispatch_execute
         outputs = task_def.dispatch_execute(ctx, idl_input_literals)
-        print(outputs)
+
         # Step3a
         if isinstance(outputs, VoidPromise):
             logger.warning("Task produces no outputs")
@@ -200,7 +200,9 @@ def _dispatch_execute(
                 if not offloading_enabled:
                     continue
 
+                print("nelson:in")
                 lit = v.to_flyte_idl()
+                print("nelson:out")
                 if max_offloaded_size != -1 and lit.ByteSize() >= max_offloaded_size:
                     raise ValueError(
                         f"Literal {k} is too large to be offloaded. Max literal size is {max_offloaded_size} whereas the literal size is {lit.ByteSize()} bytes"
