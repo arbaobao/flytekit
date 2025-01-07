@@ -1012,6 +1012,7 @@ class StructuredDatasetTransformerEngine(AsyncTypeTransformer[StructuredDataset]
                 # Note here that the type being passed in
                 metadata=metad,
             )
+            print(f"nelsonsd:{lv.scalar.structured_dataset}")
             sd._literal_sd = lv.scalar.structured_dataset
             sd.file_format = metad.structured_dataset_type.format
             return sd
