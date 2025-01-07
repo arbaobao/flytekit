@@ -945,7 +945,6 @@ class StructuredDatasetTransformerEngine(AsyncTypeTransformer[StructuredDataset]
         # The literal that we get in might be an old FlyteSchema.
         # We'll continue to support this for the time being. There is some duplicated logic here but let's
         # keep it copy/pasted for clarity
-        print(lv.scalar)
         if lv.scalar.schema is not None:
             schema_columns = lv.scalar.schema.type.columns
 
@@ -981,7 +980,7 @@ class StructuredDatasetTransformerEngine(AsyncTypeTransformer[StructuredDataset]
                 return sd
             else:
                 return self.open_as(ctx, sd_literal, expected_python_type, metad)
-
+        print(lv.scalar)
         # Start handling for StructuredDataset scalars, first look at the columns
         incoming_columns = lv.scalar.structured_dataset.metadata.structured_dataset_type.columns
 
