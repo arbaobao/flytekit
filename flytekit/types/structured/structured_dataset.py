@@ -932,7 +932,6 @@ class StructuredDatasetTransformerEngine(AsyncTypeTransformer[StructuredDataset]
         +-----------------------------+-----------------------------------------+--------------------------------------+
         """
         # Handle dataclass attribute access
-        print(lv.scalar)
         if lv.scalar:
             if lv.scalar.binary:
                 return self.from_binary_idl(lv.scalar.binary, expected_python_type)
@@ -975,13 +974,10 @@ class StructuredDatasetTransformerEngine(AsyncTypeTransformer[StructuredDataset]
             )
 
             if issubclass(expected_python_type, StructuredDataset):
-                print("nelson1")
                 sd = StructuredDataset(dataframe=None, metadata=metad)
                 sd._literal_sd = sd_literal
-                print(f"sd:{sd._literal_sd}")
                 return sd
             else:
-                print("nelson2")
                 return self.open_as(ctx, sd_literal, expected_python_type, metad)
 
         # Start handling for StructuredDataset scalars, first look at the columns
