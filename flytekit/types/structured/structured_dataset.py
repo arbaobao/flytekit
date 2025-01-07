@@ -901,6 +901,7 @@ class StructuredDatasetTransformerEngine(AsyncTypeTransformer[StructuredDataset]
     async def async_to_python_value(
         self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T] | StructuredDataset
     ) -> T | StructuredDataset:
+        print(type(lv.scalar.structured_dataset))
         """
         The only tricky thing with converting a Literal (say the output of an earlier task), to a Python value at
         the start of a task execution, is the column subsetting behavior. For example, if you have,
@@ -1013,6 +1014,7 @@ class StructuredDatasetTransformerEngine(AsyncTypeTransformer[StructuredDataset]
                 metadata=metad,
             )
             print(f"nelsonsd:{lv.scalar.structured_dataset}")
+            print(type(lv.scalar.structured_dataset))
             sd._literal_sd = lv.scalar.structured_dataset
             sd.file_format = metad.structured_dataset_type.format
             return sd
