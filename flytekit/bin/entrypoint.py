@@ -202,7 +202,7 @@ def _dispatch_execute(
                     continue
 
                 print("nelson:in")
-                print(v)
+                print(outputs.literals)
                 lit = v.to_flyte_idl()
                 print("nelson:out")
                 if max_offloaded_size != -1 and lit.ByteSize() >= max_offloaded_size:
