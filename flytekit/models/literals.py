@@ -819,10 +819,7 @@ class Scalar(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.core.literals_pb2.Scalar
         """
-        if self.structured_dataset is not None:
-            print(f"nelsontest: {type(self.structured_dataset)}")
-        if not isinstance(self.structured_dataset, StructuredDataset):
-            self.structured_dataset = self.structured_dataset._serialize
+
         return _literals_pb2.Scalar(
             primitive=self.primitive.to_flyte_idl() if self.primitive is not None else None,
             blob=self.blob.to_flyte_idl() if self.blob is not None else None,
