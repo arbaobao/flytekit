@@ -819,6 +819,7 @@ class Scalar(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.core.literals_pb2.Scalar
         """
+        print(f"structure:{type(self.structured_dataset)}")
 
         return _literals_pb2.Scalar(
             primitive=self.primitive.to_flyte_idl() if self.primitive is not None else None,
