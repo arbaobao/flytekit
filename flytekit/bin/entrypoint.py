@@ -152,6 +152,7 @@ def _dispatch_execute(
     :param output_prefix: Where to write primitive outputs
     :param is_map_task: Whether this task is executing as part of a map task
     """
+    breakpoint()
     error_file_name = _build_error_file_name()
     worker_name = _get_worker_name()
 
@@ -192,7 +193,7 @@ def _dispatch_execute(
             if offloading_enabled:
                 min_offloaded_size = int(os.environ.get("_F_L_MIN_SIZE_MB", "10")) * 1024 * 1024
                 max_offloaded_size = int(os.environ.get("_F_L_MAX_SIZE_MB", "1000")) * 1024 * 1024
-            print(outputs.literals)
+            breakpoint()
             # Go over each output and create a separate offloaded in case its size is too large
             for k, v in outputs.literals.items():
                 literal_map_copy[k] = v
@@ -318,6 +319,7 @@ def _dispatch_execute(
         logger.error("!! End Error Captured by Flyte !!")
 
     for k, v in output_file_dict.items():
+        print("nelson_322")
         utils.write_proto_to_file(v.to_flyte_idl(), os.path.join(ctx.execution_state.engine_dir, k))
 
     ctx.file_access.put_data(ctx.execution_state.engine_dir, output_prefix, is_multipart=True)
